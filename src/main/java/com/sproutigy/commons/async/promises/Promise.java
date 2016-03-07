@@ -2,10 +2,7 @@ package com.sproutigy.commons.async.promises;
 
 import com.sproutigy.commons.async.Transformer;
 import com.sproutigy.commons.async.ThrowableRunnable;
-import com.sproutigy.commons.async.promises.listeners.FailureListener;
-import com.sproutigy.commons.async.promises.listeners.ProgressListener;
-import com.sproutigy.commons.async.promises.listeners.PromiseStateListener;
-import com.sproutigy.commons.async.promises.listeners.SuccessListener;
+import com.sproutigy.commons.async.promises.listeners.*;
 
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
@@ -88,6 +85,10 @@ public interface Promise<V> extends Future<V> {
     Promise<V> onFailureAsync(FailureListener onFailure);
 
     Promise<V> onFailureBlocking(FailureListener onFailure);
+
+    Promise<V> onDoneAsync(DoneListener<V> onDone);
+
+    Promise<V> onDoneBlocking(DoneListener<V> onDone);
 
     Promise<V> fin(ThrowableRunnable runnable);
 

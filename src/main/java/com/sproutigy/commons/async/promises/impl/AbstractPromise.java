@@ -2,6 +2,7 @@ package com.sproutigy.commons.async.promises.impl;
 
 import com.sproutigy.commons.async.ThrowableRunnable;
 import com.sproutigy.commons.async.promises.*;
+import com.sproutigy.commons.async.promises.listeners.DoneListener;
 import com.sproutigy.commons.async.promises.listeners.FailureListener;
 import com.sproutigy.commons.async.promises.listeners.SuccessListener;
 import org.slf4j.Logger;
@@ -150,6 +151,44 @@ public abstract class AbstractPromise<V> implements Promise<V> {
                     onFailure.onFailure(promise.cause());
                 } catch (Throwable e) {
                     log.error("Error thrown while calling failure listener", e);
+                }
+            }
+        });
+        return this;
+    }
+
+    @Override
+    public Promise<V> onDoneAsync(DoneListener<V> onDone) {
+        addStateListener((promise, state) -> {
+            if (state.isDone()) {
+                getFactory().getAsyncExecutor().execute(() -> {
+                    try {
+                        if (state == PromiseState.Succeeded) {
+                            onDone.onDone(promise.getValue(), null);
+                        } else {
+                            onDone.onDone(null, promise.cause());
+                        }
+                    } catch (Throwable e) {
+                        log.error("Error thrown while calling done listener", e);
+                    }
+                });
+            }
+        });
+        return this;
+    }
+
+    @Override
+    public Promise<V> onDoneBlocking(DoneListener<V> onDone) {
+        addStateListener((promise, state) -> {
+            if (state.isDone()) {
+                try {
+                    if (state == PromiseState.Succeeded) {
+                        onDone.onDone(promise.getValue(), null);
+                    } else {
+                        onDone.onDone(null, promise.cause());
+                    }
+                } catch (Throwable e) {
+                    log.error("Error thrown while calling done listener", e);
                 }
             }
         });
