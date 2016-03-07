@@ -34,25 +34,35 @@ public final class Cancellator {
 
     public void await() throws InterruptedException {
         synchronized (this) {
-            Await.on(this);
+            this.wait();
         }
     }
 
     public boolean awaitUnchecked() {
         synchronized (this) {
-            return Await.onUnchecked(this);
+            try {
+                this.wait();
+                return true;
+            } catch (InterruptedException e) {
+                return false;
+            }
         }
     }
 
     public void await(long timeoutDuration, TimeUnit timeUnit) throws InterruptedException {
         synchronized (this) {
-            Await.on(this, timeoutDuration, timeUnit);
+            this.wait(timeUnit.toMillis(timeoutDuration));
         }
     }
 
     public boolean awaitUnchecked(long timeoutDuration, TimeUnit timeUnit) {
         synchronized (this) {
-            return Await.onUnchecked(this, timeoutDuration, timeUnit);
+            try {
+                this.wait(timeUnit.toMillis(timeoutDuration));
+                return true;
+            } catch (InterruptedException e) {
+                return false;
+            }
         }
     }
 
