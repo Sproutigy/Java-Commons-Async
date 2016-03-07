@@ -19,12 +19,12 @@ public class AsyncTest {
         AtomicBoolean ab3 = new AtomicBoolean(false);
         ScheduledExecutorService executorService = Async.newScheduler();
         executorService.schedule(() -> ab1.set(true), 100, TimeUnit.MILLISECONDS);
-        executorService.schedule(() -> ab2.set(true), 200, TimeUnit.MILLISECONDS);
+        executorService.schedule(() -> ab2.set(true), 500, TimeUnit.MILLISECONDS);
         executorService.schedule(() -> ab3.set(true), 1500, TimeUnit.MILLISECONDS);
-        Sleep.unchecked(150, TimeUnit.MILLISECONDS);
+        Sleep.unchecked(250, TimeUnit.MILLISECONDS);
         assertTrue(ab1.get());
         assertFalse(ab2.get());
-        Sleep.unchecked(200, TimeUnit.MILLISECONDS);
+        Sleep.unchecked(700, TimeUnit.MILLISECONDS);
         assertTrue(ab1.get());
         assertTrue(ab2.get());
         assertEquals(1, executorService.shutdownNow().size());
