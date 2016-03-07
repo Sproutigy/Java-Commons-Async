@@ -63,15 +63,33 @@ public class PromiseFactory {
         return deferred;
     }
 
+    public <V> Deferred<V> deferPending() {
+        Deferred<V> deferred = defer();
+        deferred.pending();
+        return deferred;
+    }
+
     public Deferred<Void> deferVoid() {
         return defer();
+    }
+
+    public Deferred<Void> deferVoidPending() {
+        return deferPending();
     }
 
     public <E> DeferredCollect<E> deferCollect() {
         DeferredCollect<E> deferred = new DeferredCollectPromiseImpl<>(this, new LinkedList<>(), true);
         deferred.identify(generateIdentifier());
-        if (log.isTraceEnabled()) log.trace("Created collection deferred promise [" + deferred.getIdentifier() + "]");
+        if (log.isTraceEnabled()) {
+            log.trace("Created collection deferred promise [" + deferred.getIdentifier() + "]");
+        }
         notifyPromiseCreationListeners(deferred.promise());
+        return deferred;
+    }
+
+    public <E> DeferredCollect<E> deferCollectPending() {
+        DeferredCollect<E> deferred = deferCollect();
+        deferred.pending();
         return deferred;
     }
 
@@ -230,6 +248,16 @@ public class PromiseFactory {
             }
         });
         return deferred.promise();
+    }
+
+    public <V> Promise<V> promise(Callable<Promise<V>> callable) {
+        try {
+            return callable.call();
+        } catch (Throwable e) {
+            Deferred<V> deferred = defer();
+            deferred.failure(e);
+            return deferred.promise();
+        }
     }
 
 
