@@ -1,6 +1,6 @@
 package com.sproutigy.commons.async.promises.impl;
 
-import com.sproutigy.commons.async.ThrowableRunnable;
+import com.sproutigy.commons.async.RunnableThrowable;
 import com.sproutigy.commons.async.promises.*;
 import com.sproutigy.commons.async.promises.listeners.DoneListener;
 import com.sproutigy.commons.async.promises.listeners.FailureListener;
@@ -201,7 +201,7 @@ public abstract class AbstractPromise<V> implements Promise<V> {
     }
 
     @Override
-    public Promise<V> fin(ThrowableRunnable runnable) {
+    public Promise<V> fin(RunnableThrowable runnable) {
         Deferred<V> deferred = getFactory().defer();
         addStateListener((promise, state) -> {
             if (state.isDone()) {

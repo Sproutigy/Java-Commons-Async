@@ -2,7 +2,7 @@ package com.sproutigy.commons.async.promises;
 
 import com.sproutigy.commons.async.Async;
 import com.sproutigy.commons.async.Transformer;
-import com.sproutigy.commons.async.ThrowableRunnable;
+import com.sproutigy.commons.async.RunnableThrowable;
 import com.sproutigy.commons.async.promises.impl.DeferredCollectPromiseImpl;
 import com.sproutigy.commons.async.promises.impl.DeferredPromiseImpl;
 import com.sproutigy.commons.async.promises.listeners.PromiseCreationListener;
@@ -123,11 +123,11 @@ public class PromiseFactory {
         return deferred.promise();
     }
 
-    public Promise<Void> async(ThrowableRunnable runnable) {
+    public Promise<Void> async(RunnableThrowable runnable) {
         return async(runnable, null);
     }
 
-    public <V> Promise<V> async(ThrowableRunnable runnable, V value) {
+    public <V> Promise<V> async(RunnableThrowable runnable, V value) {
         Deferred<V> deferred = defer();
         asyncExecutor.execute(() -> {
             try {
@@ -430,7 +430,7 @@ public class PromiseFactory {
         if (elements.length == 0) {
             deferred.complete();
         } else {
-            ThrowableRunnable runnable = new ThrowableRunnable() {
+            RunnableThrowable runnable = new RunnableThrowable() {
                 volatile int index = 0;
 
                 @Override

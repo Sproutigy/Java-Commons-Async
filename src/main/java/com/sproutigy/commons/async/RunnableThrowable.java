@@ -4,15 +4,15 @@ package com.sproutigy.commons.async;
  * @author LukeAheadNET
  */
 @FunctionalInterface
-public interface ThrowableRunnable {
-    static ThrowableRunnable fromRunnable(Runnable runnable) {
+public interface RunnableThrowable {
+    static RunnableThrowable fromRunnable(Runnable runnable) {
         return () -> runnable.run();
     }
 
-    static Runnable toRunnable(ThrowableRunnable throwableRunnable) {
+    static Runnable toRunnable(RunnableThrowable runnableThrowable) {
         return () -> {
             try {
-                throwableRunnable.run();
+                runnableThrowable.run();
             } catch (RuntimeException e) {
                 throw e;
             } catch (Throwable e) {
@@ -21,5 +21,5 @@ public interface ThrowableRunnable {
         };
     }
 
-    void run() throws Throwable;
+    void run() throws Exception;
 }

@@ -242,9 +242,7 @@ public abstract class AbstractDeferredPromise<V> extends AbstractPromise<V> impl
     }
 
     @Override
-    public void await() throws InterruptedException {
-        if (isDone()) return;
-
+    public Promise<V> await() throws InterruptedException {
         while (!isDone()) {
             try {
                 if (log.isTraceEnabled())
@@ -257,11 +255,13 @@ public abstract class AbstractDeferredPromise<V> extends AbstractPromise<V> impl
                 throw new UncheckedInterruptedException(e);
             }
         }
+
+        return this;
     }
 
     @Override
-    public void await(long timeout, TimeUnit timeoutUnit) throws InterruptedException, TimeoutException {
-        if (isDone()) return;
+    public Promise<V> await(long timeout, TimeUnit timeoutUnit) throws InterruptedException, TimeoutException {
+        if (isDone()) return this;
 
         boolean useTimeout = timeout > 0 && timeoutUnit != null;
         long expireTimeMillis = useTimeout ? System.currentTimeMillis() + timeoutUnit.toMillis(timeout) : 0;
@@ -269,7 +269,7 @@ public abstract class AbstractDeferredPromise<V> extends AbstractPromise<V> impl
         synchronized (this) {
             if (useTimeout) {
                 if (isDone()) {
-                    return;
+                    return this;
                 }
 
                 if (log.isTraceEnabled())
@@ -290,24 +290,28 @@ public abstract class AbstractDeferredPromise<V> extends AbstractPromise<V> impl
                 }
             }
         }
+
+        return this;
     }
 
     @Override
-    public void awaitUninterruptibly() {
+    public Promise<V> awaitUninterruptibly() {
         try {
             await();
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
         }
+        return this;
     }
 
     @Override
-    public void awaitUninterruptibly(long timeout, TimeUnit timeoutUnit) throws TimeoutException {
+    public Promise<V> awaitUninterruptibly(long timeout, TimeUnit timeoutUnit) throws TimeoutException {
         try {
             await(timeout, timeoutUnit);
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
         }
+        return this;
     }
 
     private void awaitUnchecked() {

@@ -1,7 +1,7 @@
 package com.sproutigy.commons.async.promises;
 
 import com.sproutigy.commons.async.Transformer;
-import com.sproutigy.commons.async.ThrowableRunnable;
+import com.sproutigy.commons.async.RunnableThrowable;
 import com.sproutigy.commons.async.promises.listeners.*;
 
 import java.util.concurrent.Future;
@@ -22,13 +22,13 @@ public interface Promise<V> extends Future<V> {
 
     boolean isFailure();
 
-    void await() throws InterruptedException;
+    Promise<V> await() throws InterruptedException;
 
-    void await(long timeout, TimeUnit timeoutUnit) throws InterruptedException, TimeoutException;
+    Promise<V> await(long timeout, TimeUnit timeoutUnit) throws InterruptedException, TimeoutException;
 
-    void awaitUninterruptibly();
+    Promise<V> awaitUninterruptibly();
 
-    void awaitUninterruptibly(long timeout, TimeUnit timeoutUnit) throws TimeoutException;
+    Promise<V> awaitUninterruptibly(long timeout, TimeUnit timeoutUnit) throws TimeoutException;
 
     V sync() throws Exception;
 
@@ -90,7 +90,7 @@ public interface Promise<V> extends Future<V> {
 
     Promise<V> onDoneBlocking(DoneListener<V> onDone);
 
-    Promise<V> fin(ThrowableRunnable runnable);
+    Promise<V> fin(RunnableThrowable runnable);
 
     void done();
 }

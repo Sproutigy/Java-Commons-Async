@@ -1,7 +1,7 @@
 package com.sproutigy.commons.async.promises;
 
 import com.sproutigy.commons.async.Transformer;
-import com.sproutigy.commons.async.ThrowableRunnable;
+import com.sproutigy.commons.async.RunnableThrowable;
 import com.sproutigy.commons.async.promises.listeners.PromiseCreationListener;
 import org.reactivestreams.Publisher;
 
@@ -71,12 +71,12 @@ public class PromiseFactoryDecorator extends PromiseFactory {
     }
 
     @Override
-    public Promise<Void> async(ThrowableRunnable runnable) {
+    public Promise<Void> async(RunnableThrowable runnable) {
         return decorated.async(runnable);
     }
 
     @Override
-    public <V> Promise<V> async(ThrowableRunnable runnable, V value) {
+    public <V> Promise<V> async(RunnableThrowable runnable, V value) {
         return decorated.async(runnable, value);
     }
 
