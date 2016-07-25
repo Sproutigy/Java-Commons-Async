@@ -1,5 +1,6 @@
 package com.sproutigy.commons.async.promises.impl;
 
+import com.sproutigy.commons.async.RunnableThrowable;
 import com.sproutigy.commons.async.Transformer;
 import com.sproutigy.commons.async.exceptions.UncheckedInterruptedException;
 import com.sproutigy.commons.async.promises.*;
@@ -8,10 +9,7 @@ import com.sproutigy.commons.async.promises.listeners.PromiseStateListener;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.concurrent.CopyOnWriteArrayList;
-import java.util.concurrent.ExecutionException;
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.TimeoutException;
+import java.util.concurrent.*;
 
 /**
  * @author LukeAheadNET
@@ -76,13 +74,11 @@ public abstract class AbstractDeferredPromise<V> extends AbstractPromise<V> impl
         }
     }
 
-    @Override
-    public <OUT> Promise<OUT> thenFactorize(PromiseFactory promiseFactory, Transformer<V, OUT> onSuccess) {
-        return thenFactorize(promiseFactory, onSuccess, null);
+    public <OUT> Promise<OUT> thenDefer(PromiseFactory promiseFactory, Transformer<V, OUT> onSuccess) {
+        return thenDefer(promiseFactory, onSuccess, null);
     }
 
-    @Override
-    public <OUT> Promise<OUT> thenFactorize(PromiseFactory promiseFactory, Transformer<V, OUT> onSuccess, Transformer<Throwable, OUT> onFailure) {
+    public <OUT> Promise<OUT> thenDefer(PromiseFactory promiseFactory, Transformer<V, OUT> onSuccess, Transformer<Throwable, OUT> onFailure) {
         Deferred<OUT> deferred = promiseFactory.defer();
 
         addStateListener((promise, state) -> {
@@ -93,10 +89,57 @@ public abstract class AbstractDeferredPromise<V> extends AbstractPromise<V> impl
         return deferred.promise();
     }
 
-    @Override
-    public <OUT> Promise<OUT> thenFactorize(PromiseFactory promiseFactory, Transformer<V, OUT> onSuccess, Transformer<Throwable, OUT> onFailure, ProgressListener onProgress) {
+    public <OUT> Promise<OUT> thenDefer(PromiseFactory promiseFactory, Transformer<V, OUT> onSuccess, Transformer<Throwable, OUT> onFailure, ProgressListener onProgress) {
         progress(onProgress);
-        return thenFactorize(promiseFactory, onSuccess, onFailure);
+        return thenDefer(promiseFactory, onSuccess, onFailure);
+    }
+
+    @Override
+    public Promise<Void> then(RunnableThrowable onSuccess) {
+        return then(input -> {
+            onSuccess.run();
+            return null;
+        }, null);
+    }
+
+    @Override
+    public Promise<Void> then(RunnableThrowable onSuccess, Transformer<Throwable, Void> onFailure) {
+        return then(input -> { onSuccess.run(); return null; }, onFailure);
+    }
+
+    @Override
+    public Promise<Void> then(RunnableThrowable onSuccess, Transformer<Throwable, Void> onFailure, ProgressListener onProgress) {
+        return then(input -> { onSuccess.run(); return null; }, onFailure, onProgress);
+    }
+
+    @Override
+    public <OUT> Promise<OUT> then(RunnableThrowable onSuccess, OUT retValue) {
+        return then(input -> { onSuccess.run(); return retValue; });
+    }
+
+    @Override
+    public <OUT> Promise<OUT> then(RunnableThrowable onSuccess, OUT retValue, Transformer<Throwable, OUT> onFailure) {
+        return then(input -> { onSuccess.run(); return retValue; }, onFailure);
+    }
+
+    @Override
+    public <OUT> Promise<OUT> then(RunnableThrowable onSuccess, OUT retValue, Transformer<Throwable, OUT> onFailure, ProgressListener onProgress) {
+        return then(input -> { onSuccess.run(); return retValue; }, onFailure, onProgress);
+    }
+
+    @Override
+    public <OUT> Promise<OUT> then(Callable<OUT> onSuccess) {
+        return then(input -> onSuccess.call(), null);
+    }
+
+    @Override
+    public <OUT> Promise<OUT> then(Callable<OUT> onSuccess, Transformer<Throwable, OUT> onFailure) {
+        return then(input -> onSuccess.call(), onFailure);
+    }
+
+    @Override
+    public <OUT> Promise<OUT> then(Callable<OUT> onSuccess, Transformer<Throwable, OUT> onFailure, ProgressListener onProgress) {
+        return then(input -> onSuccess.call(), onFailure, onProgress);
     }
 
     @Override
@@ -105,13 +148,33 @@ public abstract class AbstractDeferredPromise<V> extends AbstractPromise<V> impl
     }
 
     @Override
+    public Promise<Void> thenPromised(PromisedRunnable onSuccess) {
+        return thenPromised((input, factory) -> onSuccess.run());
+    }
+
+    @Override
+    public <OUT> Promise<OUT> thenPromised(PromisedRunnable onSuccess, OUT result) {
+        return null;
+    }
+
+    @Override
+    public <OUT> Promise<OUT> thenPromised(PromisedCallable<OUT> onSuccess) {
+        return thenPromised((input, factory) -> onSuccess.call());
+    }
+
+    @Override
+    public <OUT> Promise<OUT> thenPromised(PromisedTransformer<V, OUT> onSuccess) {
+        return thenPromised((input, factory) -> onSuccess.transform(input));
+    }
+
+    @Override
     public <OUT> Promise<OUT> then(Transformer<V, OUT> onSuccess, Transformer<Throwable, OUT> onFailure) {
-        return thenFactorize(getFactory(), onSuccess, onFailure);
+        return thenDefer(getFactory(), onSuccess, onFailure);
     }
 
     @Override
     public <OUT> Promise<OUT> then(Transformer<V, OUT> onSuccess, Transformer<Throwable, OUT> onFailure, ProgressListener onProgress) {
-        return thenFactorize(getFactory(), onSuccess, onFailure, onProgress);
+        return thenDefer(getFactory(), onSuccess, onFailure, onProgress);
     }
 
     @Override
@@ -119,7 +182,6 @@ public abstract class AbstractDeferredPromise<V> extends AbstractPromise<V> impl
         return thenPromised(onSuccess, null);
     }
 
-    @Override
     public <OUT> Promise<OUT> thenPromised(PromiseProviderByInput<V, OUT> onSuccess, PromiseProviderByInput<Throwable, OUT> onFailure) {
         Deferred<OUT> deferred = promiseFactory.defer();
         addStateListener((promise, state) -> {
@@ -163,7 +225,7 @@ public abstract class AbstractDeferredPromise<V> extends AbstractPromise<V> impl
         });
         return deferred.promise();
     }
-
+    /*
     @Override
     public <OUT> Promise<OUT> thenBlocking(Transformer<V, OUT> onSuccess) {
         return thenBlocking(onSuccess, null);
@@ -181,10 +243,23 @@ public abstract class AbstractDeferredPromise<V> extends AbstractPromise<V> impl
 
         return deferred.promise();
     }
+    */
 
     @Override
     public Promise<V> catchFail(Transformer<Throwable, V> onFailure) {
-        return thenBlocking(null, onFailure);
+        return then((Transformer<V,V>)null, onFailure);
+    }
+
+    @Override
+    public Promise<V> catchFail(PromisedTransformer<Throwable, V> onFailure) {
+        return thenPromised((PromiseProviderByInput<V, V>) null, (input, factory) -> {
+            return onFailure.transform(input);
+        });
+    }
+
+    @Override
+    public Promise<V> catchFail(PromiseProviderByInput<Throwable, V> onFailure) {
+        return thenPromised((PromiseProviderByInput<V, V>) null, onFailure);
     }
 
     @Override

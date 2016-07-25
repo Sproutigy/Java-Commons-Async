@@ -4,10 +4,12 @@ import com.sproutigy.commons.async.promises.Promise;
 import com.sproutigy.commons.async.promises.PromiseFactory;
 import org.junit.Test;
 
+import java.util.ArrayList;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicBoolean;
 
+import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
@@ -74,5 +76,26 @@ public class PromiseFactoryTest {
         Sleep.unchecked(100);
         assertTrue(ab1.get());
         assertFalse(ab2.get());
+    }
+
+    @Test
+    public void testThen() throws Exception {
+        ArrayList<Integer> order = new ArrayList<>();
+
+        int result = PromiseFactory.DEFAULT.async(() -> order.add(1))
+        .then(() -> order.add(2)) //RunnableThrowable
+        .then(() -> { order.add(3); return 1; }) //Callable<Integer>
+        .then(in -> { order.add(4); return in+2; }) //Transformer<Integer, Integer>
+        .thenPromised(in -> { order.add(5); return PromiseFactory.DEFAULT.async(in, x -> x+3); }) //PromisedTransformer
+        .sync();
+
+        assertEquals(6, result);
+
+        assertEquals(5, order.size());
+        assertEquals(1, (int)order.get(0));
+        assertEquals(2, (int)order.get(1));
+        assertEquals(3, (int)order.get(2));
+        assertEquals(4, (int)order.get(3));
+        assertEquals(5, (int)order.get(4));
     }
 }

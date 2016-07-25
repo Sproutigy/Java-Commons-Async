@@ -86,8 +86,8 @@ public class PromiseFactoryDecorator extends PromiseFactory {
     }
 
     @Override
-    public <IN, OUT> Promise<OUT> async(Transformer<IN, OUT> processor, IN input) {
-        return decorated.async(processor, input);
+    public <IN, OUT> Promise<OUT> async(IN input, Transformer<IN, OUT> transformer) {
+        return decorated.async(input, transformer);
     }
 
     @Override

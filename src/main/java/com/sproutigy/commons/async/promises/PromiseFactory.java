@@ -124,7 +124,7 @@ public class PromiseFactory {
     }
 
     public Promise<Void> async(RunnableThrowable runnable) {
-        return async(runnable, null);
+        return async(runnable, (Void)null);
     }
 
     public <V> Promise<V> async(RunnableThrowable runnable, V value) {
@@ -155,12 +155,12 @@ public class PromiseFactory {
         return deferred.promise();
     }
 
-    public <IN, OUT> Promise<OUT> async(Transformer<IN, OUT> processor, IN input) {
+    public <IN, OUT> Promise<OUT> async(IN input, Transformer<IN, OUT> transformer) {
         Deferred<OUT> deferred = defer();
         asyncExecutor.execute(() -> {
             try {
                 deferred.pending();
-                OUT output = processor.process(input);
+                OUT output = transformer.process(input);
                 deferred.success(output);
             } catch (Throwable e) {
                 deferred.failure(e);
