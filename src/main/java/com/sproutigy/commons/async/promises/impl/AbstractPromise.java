@@ -1,6 +1,5 @@
 package com.sproutigy.commons.async.promises.impl;
 
-import com.sproutigy.commons.async.RunnableThrowable;
 import com.sproutigy.commons.async.promises.*;
 import com.sproutigy.commons.async.promises.listeners.DoneListener;
 import com.sproutigy.commons.async.promises.listeners.FailureListener;
@@ -9,6 +8,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.Objects;
+import java.util.concurrent.Executor;
 import java.util.concurrent.TimeUnit;
 
 /**
@@ -100,7 +100,7 @@ public abstract class AbstractPromise<V> implements Promise<V> {
     public Promise<V> onSuccessAsync(SuccessListener<V> onSuccess) {
         addStateListener((promise, state) -> {
             if (state.isDone() && state == PromiseState.Succeeded) {
-                getFactory().getAsyncExecutor().execute(() -> {
+                getExecutor().execute(() -> {
                     try {
                         onSuccess.onSuccess(promise.getValue());
                     } catch (Throwable e) {
@@ -130,7 +130,7 @@ public abstract class AbstractPromise<V> implements Promise<V> {
     public Promise<V> onFailureAsync(FailureListener onFailure) {
         addStateListener((promise, state) -> {
             if (state.isDone() && state == PromiseState.Failed) {
-                getFactory().getAsyncExecutor().execute(() -> {
+                getExecutor().execute(() -> {
                     try {
                         onFailure.onFailure(promise.cause());
                     } catch (Throwable e) {
@@ -161,7 +161,7 @@ public abstract class AbstractPromise<V> implements Promise<V> {
     public Promise<V> onDoneAsync(DoneListener<V> onDone) {
         addStateListener((promise, state) -> {
             if (state.isDone()) {
-                getFactory().getAsyncExecutor().execute(() -> {
+                getExecutor().execute(() -> {
                     try {
                         if (state == PromiseState.Succeeded) {
                             onDone.onDone(promise.getValue(), null);
@@ -195,29 +195,7 @@ public abstract class AbstractPromise<V> implements Promise<V> {
         return this;
     }
 
-    @Override
-    public void done() {
-        fin(() -> getFactory().handlePromiseDone(AbstractPromise.this));
-    }
-
-    @Override
-    public Promise<V> fin(RunnableThrowable runnable) {
-        Deferred<V> deferred = getFactory().defer();
-        addStateListener((promise, state) -> {
-            if (state.isDone()) {
-                try {
-                    runnable.run();
-
-                    if (promise.isSuccess()) {
-                        deferred.success(promise.getValue());
-                    } else {
-                        deferred.failure(promise.cause());
-                    }
-                } catch (Throwable e) {
-                    deferred.failure(e);
-                }
-            }
-        });
-        return deferred.promise();
+    protected Executor getExecutor() {
+        return getFactory().getAsyncExecutor();
     }
 }

@@ -26,6 +26,7 @@ public class DeferredCollectPromiseImpl<E> extends AbstractDeferredPromise<Colle
     private final Collection<E> collection;
     protected CopyOnWriteArrayList<ElementListener<E>> listeners = new CopyOnWriteArrayList<>();
     private boolean synchronize;
+
     public DeferredCollectPromiseImpl(PromiseFactory promiseFactory, Collection<E> collection, boolean synchronize) {
         super(promiseFactory);
         this.collection = collection;
@@ -319,7 +320,7 @@ public class DeferredCollectPromiseImpl<E> extends AbstractDeferredPromise<Colle
             public void onNext(E element) {
                 try {
                     if (!deferred.promise().state().isDone()) {
-                        deferred.next(mapper.process(element));
+                        deferred.next(mapper.transform(element));
                     }
                 } catch (Throwable throwable) {
                     deferred.failure(throwable);

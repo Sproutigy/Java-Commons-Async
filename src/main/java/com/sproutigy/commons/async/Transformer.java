@@ -5,5 +5,5 @@ package com.sproutigy.commons.async;
  */
 @FunctionalInterface
 public interface Transformer<IN, OUT> {
-    OUT process(IN input) throws Throwable;
+    OUT transform(IN input) throws Throwable;
 }

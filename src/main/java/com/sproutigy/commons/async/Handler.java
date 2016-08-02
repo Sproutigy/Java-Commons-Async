@@ -5,5 +5,5 @@ package com.sproutigy.commons.async;
  */
 @FunctionalInterface
 public interface Handler<T> {
-    void handle(T arg);
+    void handle(T arg) throws Throwable;
 }

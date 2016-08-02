@@ -200,7 +200,7 @@ Operations based on promises may be chained using fluent API, example:
 ```java
 PromiseFactory.DEFAULT
     .async(() -> "Hello")
-    .thenBlocking(s -> s + " world")  //will be computed in the same thread right after completion
+    .then(s -> s + " world")  //append text to string
     .then(in -> {  //may be computed in other thread 
         System.out.println(in);
         return in;
@@ -208,12 +208,12 @@ PromiseFactory.DEFAULT
     .then(in -> {  //guaranteed that it will be started AFTER previous `then` operation will be done
         throw new RuntimeException("Just some error");
     })
-    .thenBlocking(in -> {
-        System.out.println("Never called because of an exception");
+    .then(in -> {
+        System.out.println("Never called because of an exception thrown on previous step");
         return "whatever, ignored";
     })
-    .catchFail(e -> "No problem")  //`catchFail` may translate error into a value or other exception
-    .done();  //checks for non-handled errors
+    .thenCatch(e -> "No problem")  //`thenCatch` may translate error into a value or other exception
+    .thenDone();  //checks for non-handled errors
 ```
 
 #### Joining

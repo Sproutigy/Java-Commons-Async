@@ -1,11 +1,13 @@
 package com.sproutigy.commons.async.promises.impl;
 
+import com.sproutigy.commons.async.Handler;
 import com.sproutigy.commons.async.RunnableThrowable;
 import com.sproutigy.commons.async.Transformer;
 import com.sproutigy.commons.async.exceptions.UncheckedInterruptedException;
 import com.sproutigy.commons.async.promises.*;
 import com.sproutigy.commons.async.promises.listeners.ProgressListener;
 import com.sproutigy.commons.async.promises.listeners.PromiseStateListener;
+import com.sproutigy.commons.async.promises.then.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -24,6 +26,7 @@ public abstract class AbstractDeferredPromise<V> extends AbstractPromise<V> impl
     protected CancellationHandler cancellationHandler;
     protected CopyOnWriteArrayList<PromiseStateListener<V>> stateListeners = new CopyOnWriteArrayList<>();
     protected CopyOnWriteArrayList<ProgressListener> progressListeners = new CopyOnWriteArrayList<>();
+
     public AbstractDeferredPromise(PromiseFactory promiseFactory) {
         this.promiseFactory = promiseFactory;
     }
@@ -42,104 +45,52 @@ public abstract class AbstractDeferredPromise<V> extends AbstractPromise<V> impl
         return state;
     }
 
-    private <IN, OUT> void handleThen(Promise<IN> sourcePromise, Deferred<OUT> targetDeferred, Transformer<IN, OUT> onSuccess, Transformer<Throwable, OUT> onFailure) {
-        if (log.isTraceEnabled())
-            log.trace("Executing processing of [" + targetDeferred.getIdentifier() + "] after [" + sourcePromise.getIdentifier() + "] on thread " + Thread.currentThread().toString());
-        targetDeferred.pending();
-
-        if (sourcePromise.isSuccess()) {
-            IN input = sourcePromise.getValue();
-            try {
-                if (onSuccess == null) {
-                    targetDeferred.success((OUT) input);
-                } else {
-                    OUT output = onSuccess.process(input);
-                    targetDeferred.success(output);
-                }
-            } catch (Throwable e) {
-                targetDeferred.failure(e);
-            }
-        } else {
-            Throwable cause = sourcePromise.cause();
-            if (onFailure == null) {
-                targetDeferred.failure(cause);
-            } else {
-                try {
-                    OUT output = onFailure.process(cause);
-                    targetDeferred.success(output);
-                } catch (Throwable e) {
-                    targetDeferred.failure(e);
-                }
-            }
-        }
-    }
-
-    public <OUT> Promise<OUT> thenDefer(PromiseFactory promiseFactory, Transformer<V, OUT> onSuccess) {
-        return thenDefer(promiseFactory, onSuccess, null);
-    }
-
-    public <OUT> Promise<OUT> thenDefer(PromiseFactory promiseFactory, Transformer<V, OUT> onSuccess, Transformer<Throwable, OUT> onFailure) {
-        Deferred<OUT> deferred = promiseFactory.defer();
-
-        addStateListener((promise, state) -> {
-            if (!state.isDone()) return;
-            promiseFactory.getAsyncExecutor().execute(() -> handleThen(promise, deferred, onSuccess, onFailure));
-        });
-
-        return deferred.promise();
-    }
-
-    public <OUT> Promise<OUT> thenDefer(PromiseFactory promiseFactory, Transformer<V, OUT> onSuccess, Transformer<Throwable, OUT> onFailure, ProgressListener onProgress) {
-        progress(onProgress);
-        return thenDefer(promiseFactory, onSuccess, onFailure);
+    @Override
+    public Promise<V> then(RunnableThrowable onSuccess) {
+        return then(onSuccess, null);
     }
 
     @Override
-    public Promise<Void> then(RunnableThrowable onSuccess) {
-        return then(input -> {
-            onSuccess.run();
-            return null;
-        }, null);
-    }
-
-    @Override
-    public Promise<Void> then(RunnableThrowable onSuccess, Transformer<Throwable, Void> onFailure) {
-        return then(input -> { onSuccess.run(); return null; }, onFailure);
-    }
-
-    @Override
-    public Promise<Void> then(RunnableThrowable onSuccess, Transformer<Throwable, Void> onFailure, ProgressListener onProgress) {
-        return then(input -> { onSuccess.run(); return null; }, onFailure, onProgress);
-    }
-
-    @Override
-    public <OUT> Promise<OUT> then(RunnableThrowable onSuccess, OUT retValue) {
-        return then(input -> { onSuccess.run(); return retValue; });
-    }
-
-    @Override
-    public <OUT> Promise<OUT> then(RunnableThrowable onSuccess, OUT retValue, Transformer<Throwable, OUT> onFailure) {
-        return then(input -> { onSuccess.run(); return retValue; }, onFailure);
-    }
-
-    @Override
-    public <OUT> Promise<OUT> then(RunnableThrowable onSuccess, OUT retValue, Transformer<Throwable, OUT> onFailure, ProgressListener onProgress) {
-        return then(input -> { onSuccess.run(); return retValue; }, onFailure, onProgress);
+    public Promise<V> then(RunnableThrowable onSuccess, Handler<Throwable> onFailure) {
+        return then(value -> onSuccess.run(), onFailure);
     }
 
     @Override
     public <OUT> Promise<OUT> then(Callable<OUT> onSuccess) {
-        return then(input -> onSuccess.call(), null);
+        return then(onSuccess, null);
     }
 
     @Override
     public <OUT> Promise<OUT> then(Callable<OUT> onSuccess, Transformer<Throwable, OUT> onFailure) {
-        return then(input -> onSuccess.call(), onFailure);
+        return then(value -> {
+            return onSuccess.call();
+        }, null);
     }
 
     @Override
-    public <OUT> Promise<OUT> then(Callable<OUT> onSuccess, Transformer<Throwable, OUT> onFailure, ProgressListener onProgress) {
-        return then(input -> onSuccess.call(), onFailure, onProgress);
+    public Promise<V> then(Handler<V> onSuccess) {
+        return then(onSuccess, null);
+    }
+
+    @Override
+    public Promise<V> then(Handler<V> onSuccess, Handler<Throwable> onFailure) {
+        Transformer<V, V> onSuccessTransform = value -> {
+            if (onSuccess != null) {
+                onSuccess.handle(value);
+            }
+
+            return value;
+        };
+
+        Transformer<Throwable, V> onFailureTransform = null;
+        if (onFailure != null) {
+            onFailureTransform = value -> {
+                onFailure.handle(cause);
+                return null;
+            };
+        }
+
+        return then(onSuccessTransform, onFailureTransform);
     }
 
     @Override
@@ -148,118 +99,267 @@ public abstract class AbstractDeferredPromise<V> extends AbstractPromise<V> impl
     }
 
     @Override
-    public Promise<Void> thenPromised(PromisedRunnable onSuccess) {
-        return thenPromised((input, factory) -> onSuccess.run());
-    }
-
-    @Override
-    public <OUT> Promise<OUT> thenPromised(PromisedRunnable onSuccess, OUT result) {
-        return null;
-    }
-
-    @Override
-    public <OUT> Promise<OUT> thenPromised(PromisedCallable<OUT> onSuccess) {
-        return thenPromised((input, factory) -> onSuccess.call());
-    }
-
-    @Override
-    public <OUT> Promise<OUT> thenPromised(PromisedTransformer<V, OUT> onSuccess) {
-        return thenPromised((input, factory) -> onSuccess.transform(input));
-    }
-
-    @Override
+    @SuppressWarnings("unchecked")
     public <OUT> Promise<OUT> then(Transformer<V, OUT> onSuccess, Transformer<Throwable, OUT> onFailure) {
-        return thenDefer(getFactory(), onSuccess, onFailure);
-    }
-
-    @Override
-    public <OUT> Promise<OUT> then(Transformer<V, OUT> onSuccess, Transformer<Throwable, OUT> onFailure, ProgressListener onProgress) {
-        return thenDefer(getFactory(), onSuccess, onFailure, onProgress);
-    }
-
-    @Override
-    public <OUT> Promise<OUT> thenPromised(PromiseProviderByInput<V, OUT> onSuccess) {
-        return thenPromised(onSuccess, null);
-    }
-
-    public <OUT> Promise<OUT> thenPromised(PromiseProviderByInput<V, OUT> onSuccess, PromiseProviderByInput<Throwable, OUT> onFailure) {
         Deferred<OUT> deferred = promiseFactory.defer();
+
         addStateListener((promise, state) -> {
-            if (!state.isDone()) return;
+            if (state.isDone()) {
+                getExecutor().execute(() -> {
+                    deferred.pending();
 
-            deferred.pending();
+                    if (state == PromiseState.Succeeded) {
+                        try {
+                            V input = promise.getValue();
+                            OUT output;
+                            if (onSuccess != null) {
+                                output = onSuccess.transform(input);
+                            }
+                            else {
+                                try {
+                                    output = (OUT) input;
+                                } catch (ClassCastException e) {
+                                    output = null;
+                                }
+                            }
 
-            if (state == PromiseState.Succeeded) {
-                V input = promise.getValue();
-                try {
-                    if (onSuccess == null) {
-                        deferred.success((OUT) input);
-                    } else {
-                        Promise<OUT> nextPromise = onSuccess.provide(input, getFactory());
-                        if (nextPromise != null) {
-                            promiseFactory.bind(nextPromise, deferred);
-                        } else {
-                            deferred.success((OUT) input);
+                            deferred.success(output);
+                        }
+                        catch (Throwable e) {
+                            deferred.failure(e);
                         }
                     }
-                } catch (Throwable e) {
-                    deferred.failure(e);
-                }
-            } else {
-                Throwable cause = promise.cause();
-                if (onFailure == null) {
-                    deferred.failure(cause);
-                } else {
-                    try {
-                        Promise<OUT> nextPromise = onFailure.provide(cause, getFactory());
-                        if (nextPromise != null) {
-                            promiseFactory.bind(nextPromise, deferred);
-                        } else {
-                            deferred.failure(cause);
-                        }
-                    } catch (Throwable e) {
-                        deferred.failure(e);
+                    else {
+                        handleThenFailure(promise, deferred, onFailure);
                     }
-                }
+                });
+            }
+
+        });
+
+        return deferred.promise();
+    }
+
+    @Override
+    public <OUT> Promise<OUT> thenWaitFor(ThenPromise<V, OUT> onSuccess) {
+        return thenWaitFor(onSuccess, null);
+    }
+
+    @Override
+    public <OUT> Promise<OUT> thenWaitFor(ThenPromise<V, OUT> onSuccess, Transformer<Throwable, OUT> onFailure) {
+        Deferred<OUT> deferred = promiseFactory.defer();
+
+        addStateListener((promise, state) -> {
+            if (state.isDone()) {
+                getExecutor().execute(() -> {
+                    deferred.pending();
+
+                    if (state == PromiseState.Succeeded) {
+                        try {
+                            Promise<OUT> otherPromise = onSuccess.execute(promise.getValue());
+                            otherPromise.bindTo(deferred);
+                        }
+                        catch (Throwable e) {
+                            if (!deferred.isDone()) {
+                                deferred.failure(e);
+                            }
+                        }
+                    }
+                    else {
+                        handleThenFailure(promise, deferred, onFailure);
+                    }
+                });
             }
         });
+
         return deferred.promise();
-    }
-    /*
-    @Override
-    public <OUT> Promise<OUT> thenBlocking(Transformer<V, OUT> onSuccess) {
-        return thenBlocking(onSuccess, null);
     }
 
     @Override
-    @SuppressWarnings("unchecked")
-    public <OUT> Promise<OUT> thenBlocking(Transformer<V, OUT> onSuccess, Transformer<Throwable, OUT> onFailure) {
+    public <OUT> Promise<OUT> thenWaitFor(ThenBuildPromise<V, OUT> onSuccess) {
+        return thenWaitFor(onSuccess, null);
+    }
+
+    @Override
+    public <OUT> Promise<OUT> thenWaitFor(ThenBuildPromise<V, OUT> onSuccess, Transformer<Throwable, OUT> onFailure) {
         Deferred<OUT> deferred = promiseFactory.defer();
 
         addStateListener((promise, state) -> {
-            if (!state.isDone()) return;
-            handleThen(promise, deferred, onSuccess, onFailure);
+            if (state.isDone()) {
+                getExecutor().execute(() -> {
+                    deferred.pending();
+
+                    if (state == PromiseState.Succeeded) {
+                        try {
+                            onSuccess.execute(promise.getValue(), promiseFactory);
+                        }
+                        catch (Throwable e) {
+                            if (!deferred.isDone()) {
+                                deferred.failure(e);
+                            }
+                        }
+                    }
+                    else {
+                        handleThenFailure(promise, deferred, onFailure);
+                    }
+                });
+            }
         });
 
         return deferred.promise();
     }
-    */
 
     @Override
-    public Promise<V> catchFail(Transformer<Throwable, V> onFailure) {
-        return then((Transformer<V,V>)null, onFailure);
+    public <OUT> Promise<OUT> thenWaitFor(ThenDefer<V, OUT> onSuccess) {
+        return thenWaitFor(onSuccess, null);
     }
 
     @Override
-    public Promise<V> catchFail(PromisedTransformer<Throwable, V> onFailure) {
-        return thenPromised((PromiseProviderByInput<V, V>) null, (input, factory) -> {
-            return onFailure.transform(input);
+    public <OUT> Promise<OUT> thenWaitFor(ThenDefer<V, OUT> onSuccess, Transformer<Throwable, OUT> onFailure) {
+        Deferred<OUT> deferred = promiseFactory.defer();
+
+        addStateListener((promise, state) -> {
+            if (state.isDone()) {
+                deferred.pending();
+
+                getExecutor().execute(() -> {
+                    if (state == PromiseState.Succeeded) {
+                        try {
+                            onSuccess.execute(promise.getValue(), deferred);
+                        }
+                        catch (Throwable e) {
+                            if (!deferred.isDone()) {
+                                deferred.failure(e);
+                            }
+                        }
+                    }
+                    else {
+                        handleThenFailure(promise, deferred, onFailure);
+                    }
+                });
+            }
+        });
+
+        return deferred.promise();
+    }
+
+    @Override
+    public Promise<V> thenCatch(Handler<Throwable> onFailure, Class... causeFilters) {
+        Deferred<V> deferred = promiseFactory.defer();
+        return handleCatch(deferred, (cause) -> {
+            onFailure.handle(cause);
+            deferred.success(null);
+        }, causeFilters);
+    }
+
+    @Override
+    public <OUT> Promise<OUT> thenCatch(Transformer<Throwable, OUT> onFailure, Class... causeFilters) {
+        Deferred<OUT> deferred = promiseFactory.defer();
+        return handleCatch(deferred, (cause) -> deferred.success(onFailure.transform(cause)), causeFilters);
+    }
+
+    @Override
+    public <OUT> Promise<OUT> thenCatchWaitFor(ThenPromise<Throwable, OUT> onFailure, Class... causeFilters) {
+        Deferred<OUT> deferred = promiseFactory.defer();
+        return handleCatch(deferred, (cause) -> onFailure.execute(cause).bindTo(deferred), causeFilters);
+    }
+
+    @Override
+    public <OUT> Promise<OUT> thenCatchWaitFor(ThenBuildPromise<Throwable, OUT> onFailure, Class... causeFilters) {
+        Deferred<OUT> deferred = promiseFactory.defer();
+        return handleCatch(deferred, (cause) -> onFailure.execute(cause, getFactory()).bindTo(deferred), causeFilters);
+    }
+
+    @Override
+    public <OUT> Promise<OUT> thenCatchWaitFor(ThenDefer<Throwable, OUT> onFailure, Class... causeFilters) {
+        Deferred<OUT> deferred = promiseFactory.defer();
+        return handleCatch(deferred, (cause) -> onFailure.execute(cause, deferred));
+    }
+
+    private <OUT> Promise<OUT> handleCatch(Deferred<OUT> deferred, ThenCatchAction catchAction, Class... causeFilters) {
+        addStateListener((promise, state) -> {
+            if (state.isDone()) {
+                deferred.pending();
+
+                getExecutor().execute(() -> {
+                    if (state != PromiseState.Succeeded) {
+                        Throwable cause = promise.cause();
+
+                        if (filterThrowable(cause, causeFilters)) {
+                            try {
+                                catchAction.execute(cause);
+                            } catch (Throwable e) {
+                                if (!deferred.isDone()) {
+                                    deferred.failure(e);
+                                }
+                            }
+                        }
+                        else {
+                            deferred.failure(cause);
+                        }
+                    }
+                    else {
+                        passthroughValue(promise, deferred);
+                    }
+                });
+            }
+        });
+
+        return deferred.promise();
+    }
+
+    private interface ThenCatchAction {
+        void execute(Throwable cause) throws Throwable;
+    }
+
+
+    @Override
+    public void thenDone() {
+        addStateListener((promise, state) -> {
+            if (state.isDone()) {
+                getFactory().handlePromiseDone(this);
+            }
         });
     }
 
-    @Override
-    public Promise<V> catchFail(PromiseProviderByInput<Throwable, V> onFailure) {
-        return thenPromised((PromiseProviderByInput<V, V>) null, onFailure);
+    private static <OUT> void handleThenFailure(Promise promise, Deferred<OUT> deferred, Transformer<Throwable, OUT> onFailure) {
+        Throwable cause = promise.cause();
+        if (onFailure != null) {
+            try {
+                OUT output = onFailure.transform(cause);
+                deferred.success(output);
+            } catch (Throwable e) {
+                deferred.failure(e);
+            }
+        }
+        else {
+            deferred.failure(cause);
+        }
+    }
+
+    private static boolean filterThrowable(Throwable cause, Class... filters) {
+        if (filters.length > 0) {
+            for (Class causeType : filters) {
+                if (isCausedBy(causeType, cause)) {
+                    return true;
+                }
+            }
+            return false;
+        }
+        else {
+            return true;
+        }
+    }
+
+    private <V, OUT> void passthroughValue(Promise<V> promise, Deferred<OUT> defer) {
+        V input = promise.getValue();
+        OUT output;
+        try {
+            output = (OUT) input;
+        } catch (ClassCastException e) {
+            output = null;
+        }
+        defer.success(output);
     }
 
     @Override
@@ -307,6 +407,10 @@ public abstract class AbstractDeferredPromise<V> extends AbstractPromise<V> impl
 
     @SuppressWarnings("unchecked")
     protected void notifyProgress(Object progress) {
+        if (isDone()) {
+            throw new IllegalStateException("Promise already done");
+        }
+
         for (ProgressListener progressListener : progressListeners) {
             try {
                 progressListener.onProgress(progress);
@@ -487,5 +591,16 @@ public abstract class AbstractDeferredPromise<V> extends AbstractPromise<V> impl
                 }
             }
         }
+    }
+
+
+    private static boolean isCausedBy(Class check, Throwable thrown) {
+        if (thrown.getClass().isAssignableFrom(check)) {
+            return true;
+        }
+        if (thrown.getCause() != null) {
+            return isCausedBy(check, thrown.getCause());
+        }
+        return false;
     }
 }

@@ -6,7 +6,7 @@ package com.sproutigy.commons.async;
 @FunctionalInterface
 public interface RunnableThrowable {
     static RunnableThrowable fromRunnable(Runnable runnable) {
-        return () -> runnable.run();
+        return runnable::run;
     }
 
     static Runnable toRunnable(RunnableThrowable runnableThrowable) {

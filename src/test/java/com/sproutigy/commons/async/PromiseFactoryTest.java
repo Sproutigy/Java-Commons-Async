@@ -9,9 +9,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicBoolean;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.*;
 
 /**
  * @author LukeAheadNET
@@ -85,8 +83,8 @@ public class PromiseFactoryTest {
         int result = PromiseFactory.DEFAULT.async(() -> order.add(1))
         .then(() -> order.add(2)) //RunnableThrowable
         .then(() -> { order.add(3); return 1; }) //Callable<Integer>
-        .then(in -> { order.add(4); return in+2; }) //Transformer<Integer, Integer>
-        .thenPromised(in -> { order.add(5); return PromiseFactory.DEFAULT.async(in, x -> x+3); }) //PromisedTransformer
+        .then(val -> { order.add(4); return val+2; }) //Transformer<Integer, Integer>
+        .thenWaitFor(in -> { order.add(5); return PromiseFactory.DEFAULT.async(in, x -> x+3); }) //ThenBuildPromise
         .sync();
 
         assertEquals(6, result);
@@ -97,5 +95,22 @@ public class PromiseFactoryTest {
         assertEquals(3, (int)order.get(2));
         assertEquals(4, (int)order.get(3));
         assertEquals(5, (int)order.get(4));
+    }
+
+    @Test
+    public void testThenCatch() throws Exception {
+        String result = PromiseFactory.DEFAULT.instant("start")
+                .then(() -> { throw new IllegalStateException(); })
+                .then(() -> { throw new IllegalArgumentException(); }) //should be skipped
+                .thenCatch(cause -> {
+                    if (cause instanceof IllegalStateException) {
+                        return "OK";
+                    } else {
+                        return "FAIL";
+                    }
+                }, IllegalStateException.class)
+                .sync();
+
+        assertEquals("OK", result);
     }
 }

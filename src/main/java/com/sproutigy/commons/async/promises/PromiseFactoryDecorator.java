@@ -3,6 +3,7 @@ package com.sproutigy.commons.async.promises;
 import com.sproutigy.commons.async.Transformer;
 import com.sproutigy.commons.async.RunnableThrowable;
 import com.sproutigy.commons.async.promises.listeners.PromiseCreationListener;
+import com.sproutigy.commons.async.promises.then.ThenBuildPromise;
 import org.reactivestreams.Publisher;
 
 import java.util.Iterator;
@@ -163,7 +164,7 @@ public class PromiseFactoryDecorator extends PromiseFactory {
     }
 
     @Override
-    public <IN, OUT> PromiseCollect<OUT> forEachSequentially(PromiseProviderByInput<IN, OUT> provider, IN... elements) {
+    public <IN, OUT> PromiseCollect<OUT> forEachSequentially(ThenBuildPromise<IN, OUT> provider, IN... elements) {
         return decorated.forEachSequentially(provider, elements);
     }
 

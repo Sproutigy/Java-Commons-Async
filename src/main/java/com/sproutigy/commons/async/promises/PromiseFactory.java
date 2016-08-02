@@ -7,6 +7,7 @@ import com.sproutigy.commons.async.promises.impl.DeferredCollectPromiseImpl;
 import com.sproutigy.commons.async.promises.impl.DeferredPromiseImpl;
 import com.sproutigy.commons.async.promises.listeners.PromiseCreationListener;
 import com.sproutigy.commons.async.promises.listeners.PromiseStateListener;
+import com.sproutigy.commons.async.promises.then.ThenBuildPromise;
 import org.reactivestreams.Publisher;
 import org.reactivestreams.Subscriber;
 import org.reactivestreams.Subscription;
@@ -160,7 +161,7 @@ public class PromiseFactory {
         asyncExecutor.execute(() -> {
             try {
                 deferred.pending();
-                OUT output = transformer.process(input);
+                OUT output = transformer.transform(input);
                 deferred.success(output);
             } catch (Throwable e) {
                 deferred.failure(e);
@@ -424,7 +425,7 @@ public class PromiseFactory {
     }
 
 
-    public <IN, OUT> PromiseCollect<OUT> forEachSequentially(PromiseProviderByInput<IN, OUT> provider, IN... elements) {
+    public <IN, OUT> PromiseCollect<OUT> forEachSequentially(ThenBuildPromise<IN, OUT> provider, IN... elements) {
         DeferredCollect<OUT> deferred = deferCollect();
 
         if (elements.length == 0) {
@@ -441,7 +442,7 @@ public class PromiseFactory {
                         IN element = elements[index];
                         index++;
                         try {
-                            provider.provide(element, PromiseFactory.this)
+                            provider.execute(element, PromiseFactory.this)
                                     .onFailureBlocking(deferred::failure)
                                     .onSuccessBlocking(output -> {
                                         deferred.next(output);
