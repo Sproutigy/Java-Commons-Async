@@ -1,13 +1,8 @@
 package com.sproutigy.commons.async;
 
-import com.sproutigy.commons.async.exceptions.UncheckedInterruptedException;
-
 import java.util.concurrent.TimeUnit;
 
-/**
- * @author LukeAheadNET
- */
-public class Sleep {
+public final class Sleep {
 
     private Sleep() {
     }
@@ -37,7 +32,7 @@ public class Sleep {
         try {
             Thread.sleep(millis, nanos);
         } catch (InterruptedException e) {
-            throw new UncheckedInterruptedException(e);
+            throw new RuntimeException(e);
         }
     }
 

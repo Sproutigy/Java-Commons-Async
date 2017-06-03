@@ -5,14 +5,14 @@
     <parent>
         <groupId>com.sproutigy</groupId>
         <artifactId>opensource-parent</artifactId>
-        <version>1.1</version>
+        <version>3</version>
     </parent>
 
     <groupId>com.sproutigy.commons</groupId>
     <artifactId>async</artifactId>
-    <version>1.0.0</version>
+    <version>2.0</version>
 
-    <packaging>bundle</packaging>
+    <packaging>jar</packaging>
 
     <name>Sproutigy Java Commons Async</name>
     <description>Async Programming Toolkit for Java</description>
@@ -20,6 +20,7 @@
 
     <properties>
         <java.version>1.8</java.version>
+        <scm.reponame>Java-Commons-Async</scm.reponame>
     </properties>
 
     <dependencies>
@@ -31,24 +32,35 @@
         <dependency>
             <groupId>org.slf4j</groupId>
             <artifactId>slf4j-api</artifactId>
+            <version>1.7.25</version>
+            <scope>provided</scope>
+            <optional>true</optional>
+        </dependency>
+        <dependency>
+            <groupId>org.slf4j</groupId>
+            <artifactId>slf4j-simple</artifactId>
+            <version>1.7.25</version>
+            <scope>test</scope>
         </dependency>
         <dependency>
             <groupId>com.google.guava</groupId>
             <artifactId>guava</artifactId>
-            <scope>compile</scope>
+            <version>15.0</version>
+            <scope>provided</scope>
             <optional>true</optional>
         </dependency>
         <dependency>
             <groupId>io.netty</groupId>
             <artifactId>netty-common</artifactId>
-            <version>4.0.33.Final</version>
-            <scope>compile</scope>
+            <version>4.1.11.Final</version>
+            <scope>provided</scope>
             <optional>true</optional>
         </dependency>
 
         <dependency>
             <groupId>junit</groupId>
             <artifactId>junit</artifactId>
+            <version>4.12</version>
             <scope>test</scope>
         </dependency>
     </dependencies>
@@ -65,7 +77,7 @@
     <developers>
         <developer>
             <email>dev@lukeahead.net</email>
-            <name>Lucas Nawojczyk</name>
+            <name>Łukasz Nawojczyk</name>
             <url>http://www.lukeahead.net</url>
             <id>LukeAheadNET</id>
         </developer>
