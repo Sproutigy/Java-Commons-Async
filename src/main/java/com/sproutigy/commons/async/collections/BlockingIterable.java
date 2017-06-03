@@ -4,9 +4,6 @@ import org.reactivestreams.Publisher;
 
 import java.util.Iterator;
 
-/**
- * @author LukeAheadNET
- */
 public class BlockingIterable<T> implements Iterable<T> {
     private Publisher<T> publisher;
 

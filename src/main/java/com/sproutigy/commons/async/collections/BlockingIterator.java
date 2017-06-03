@@ -1,11 +1,8 @@
 package com.sproutigy.commons.async.collections;
 
-import com.sproutigy.commons.async.exceptions.ReactiveUncheckedException;
 import org.reactivestreams.Publisher;
 import org.reactivestreams.Subscriber;
 import org.reactivestreams.Subscription;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.util.Iterator;
@@ -13,12 +10,7 @@ import java.util.LinkedList;
 import java.util.NoSuchElementException;
 import java.util.Queue;
 
-/**
- * @author LukeAheadNET
- */
 public class BlockingIterator<T> implements Iterator<T>, CloseableIterator<T> {
-
-    private static Logger log = LoggerFactory.getLogger(BlockingIterator.class);
 
     private Queue<T> queue = new LinkedList<>();
     private volatile boolean success = false;
@@ -29,12 +21,9 @@ public class BlockingIterator<T> implements Iterator<T>, CloseableIterator<T> {
     private Subscription subscription;
 
     public BlockingIterator(Publisher<T> publisher) {
-        if (log.isTraceEnabled()) log.trace(getIdentifier() + " subscribing...");
-
         publisher.subscribe(new Subscriber<T>() {
             @Override
             public void onSubscribe(Subscription subscription) {
-                if (log.isTraceEnabled()) log.trace(getIdentifier() + " subscribed");
 
                 BlockingIterator.this.subscription = subscription;
 
@@ -45,7 +34,6 @@ public class BlockingIterator<T> implements Iterator<T>, CloseableIterator<T> {
 
             @Override
             public void onNext(T t) {
-                if (log.isTraceEnabled()) log.trace(getIdentifier() + " signaled next element: " + t.toString());
                 if (closed) return;
 
                 synchronized (BlockingIterator.this) {
@@ -56,7 +44,6 @@ public class BlockingIterator<T> implements Iterator<T>, CloseableIterator<T> {
 
             @Override
             public void onError(Throwable t) {
-                if (log.isTraceEnabled()) log.trace(getIdentifier() + " signaled error", t);
                 if (closed) return;
 
                 synchronized (BlockingIterator.this) {
@@ -70,7 +57,6 @@ public class BlockingIterator<T> implements Iterator<T>, CloseableIterator<T> {
 
             @Override
             public void onComplete() {
-                if (log.isTraceEnabled()) log.trace(getIdentifier() + " signaled completion");
                 if (closed) return;
 
                 synchronized (BlockingIterator.this) {
@@ -83,7 +69,6 @@ public class BlockingIterator<T> implements Iterator<T>, CloseableIterator<T> {
 
             private void notifyWaitingMonitors() {
                 BlockingIterator.this.notifyAll();
-                if (log.isTraceEnabled()) log.trace(getIdentifier() + " notified waiting monitors");
             }
         });
     }
@@ -96,7 +81,7 @@ public class BlockingIterator<T> implements Iterator<T>, CloseableIterator<T> {
             }
 
             if (error) {
-                throw new ReactiveUncheckedException(cause);
+                throw new RuntimeException(cause);
             }
 
             if (success && queue.isEmpty()) {
@@ -115,7 +100,7 @@ public class BlockingIterator<T> implements Iterator<T>, CloseableIterator<T> {
             }
 
             if (error) {
-                throw new ReactiveUncheckedException(cause);
+                throw new RuntimeException(cause);
             }
         }
 
@@ -126,18 +111,20 @@ public class BlockingIterator<T> implements Iterator<T>, CloseableIterator<T> {
         throw new NoSuchElementException();
     }
 
+    @Override
+    public void remove() {
+        throw new UnsupportedOperationException("remove");
+    }
+
     public Subscription getSubscription() {
         if (subscription == null) {
             synchronized (this) {
                 while (subscription == null) {
-                    if (log.isTraceEnabled()) log.trace(getIdentifier() + " waiting for subscription notification...");
                     try {
                         this.wait();
                     } catch (InterruptedException e) {
-                        throw new ReactiveUncheckedException(e);
+                        throw new RuntimeException(e);
                     }
-                    if (log.isTraceEnabled())
-                        log.trace(getIdentifier() + " subscription waiting monitor has been notified");
                 }
             }
         }
@@ -146,10 +133,7 @@ public class BlockingIterator<T> implements Iterator<T>, CloseableIterator<T> {
     }
 
     public void preload(int count) {
-        if (log.isTraceEnabled()) log.trace(getIdentifier() + " requesting " + count + " elements...");
-
         getSubscription().request(count);
-        if (log.isTraceEnabled()) log.trace(getIdentifier() + " requested");
     }
 
     private String getIdentifier() {
@@ -157,24 +141,20 @@ public class BlockingIterator<T> implements Iterator<T>, CloseableIterator<T> {
     }
 
     private boolean fetch() {
-        if (log.isTraceEnabled()) log.trace(getIdentifier() + " requesting element...");
         getSubscription().request(1);
-        if (log.isTraceEnabled()) log.trace(getIdentifier() + " requested");
 
         synchronized (this) {
             while (!closed && !success && !error && queue.isEmpty()) {
                 try {
-                    if (log.isTraceEnabled()) log.trace(getIdentifier() + " waiting for notification...");
                     this.wait();
-                    if (log.isTraceEnabled()) log.trace(getIdentifier() + " waiting monitor has been notified");
                 } catch (InterruptedException e) {
-                    throw new ReactiveUncheckedException(e);
+                    throw new RuntimeException(e);
                 }
             }
         }
 
         if (error) {
-            throw new ReactiveUncheckedException(cause);
+            throw new RuntimeException(cause);
         }
 
         return !queue.isEmpty();
@@ -182,7 +162,6 @@ public class BlockingIterator<T> implements Iterator<T>, CloseableIterator<T> {
 
     @Override
     public void close() throws IOException {
-        if (log.isTraceEnabled()) log.trace(this.toString() + " closed");
         closed = true;
         subscription.cancel();
     }

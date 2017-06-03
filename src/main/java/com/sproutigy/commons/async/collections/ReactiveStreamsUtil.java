@@ -6,22 +6,19 @@ import org.reactivestreams.Subscription;
 
 import java.util.Iterator;
 
-/**
- * @author LukeAheadNET
- */
-public class ReactiveStreamsUtil {
+public final class ReactiveStreamsUtil {
     private ReactiveStreamsUtil() {
     }
 
-    public static <T> Iterable<T> iterable(Publisher<T> publisher) {
+    public static <T> Iterable<T> asIterable(Publisher<T> publisher) {
         return new BlockingIterable<>(publisher);
     }
 
-    public static <T> Iterator<T> iterator(Publisher<T> publisher) {
+    public static <T> Iterator<T> asIterator(Publisher<T> publisher) {
         return new BlockingIterator<>(publisher);
     }
 
-    public static <T> void iteratorReactive(Publisher<T> publisher, ReactiveIterator<T> reactiveIterator) {
+    public static <T> void bindReactiveIterator(Publisher<T> publisher, final ReactiveIterator<T> reactiveIterator) {
         publisher.subscribe(new Subscriber<T>() {
             private Subscription subscription;
 
